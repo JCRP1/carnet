@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Gestion de Carnets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --card-border: #e2e6ea;
+      --primary: #1a6b8a;
+      --primary-hover: #145a75;
+      --primary-fg: #ffffff;
+      --text: #1c2b36;
+      --text-muted: #6b7b8d;
+      --accent: #eaf2f6;
+      --danger: #c0392b;
+      --danger-hover: #a93226;
+      --success-bg: #e8f5e9;
+      --success-border: #81c784;
+      --success-text: #2e7d32;
+      --warning-bg: #fff3e0;
+      --warning-border: #ffb74d;
+      --warning-text: #e65100;
+      --radius: 10px;
+      --sidebar-w: 260px;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+    }
+
+    /* ---- Sidebar ---- */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--card);
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      height: 100dvh;
+      position: sticky;
+      top: 0;
+    }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .sidebar-brand svg { color: var(--primary); }
+
+    .sidebar-brand span {
+      font-weight: 700;
+      font-size: 17px;
+      color: var(--text);
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .sidebar-nav li button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: var(--font);
+      text-align: left;
+    }
+
+    .sidebar-nav li button:hover {
+      background: var(--accent);
+      color: var(--text);
+    }
+
+    .sidebar-nav li button.active {
+      background: var(--primary);
+      color: var(--primary-fg);
+    }
+
+    .sidebar-nav li button .badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: var(--text-muted);
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .sidebar-nav li button.active .badge {
+      background: rgba(255,255,255,0.2);
+      color: var(--primary-fg);
+    }
+
+    .sidebar-nav li button svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    /* ---- Main Content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      height: 100dvh;
+    }
+
+    .content {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 32px 64px;
+    }
+
+    .section-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .section-desc {
+      margin-top: 4px;
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ---- Mobile Header ---- */
+    .mobile-header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--card);
+      border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 90;
+    }
+
+    .mobile-header .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .mobile-header .brand svg { color: var(--primary); }
+
+    .hamburger {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text);
+      padding: 6px;
+      border-radius: 6px;
+    }
+
+    .hamburger:hover { background: var(--accent); }
+
+    /* ---- Overlay / Mobile Drawer ---- */
+    .drawer-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+    }
+
+    .drawer-overlay.open { display: block; }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      left: -280px;
+      width: 270px;
+      height: 100dvh;
+      background: var(--card);
+      z-index: 101;
+      transition: left 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+    }
+
+    .drawer.open { left: 0; }
+
+    /* ---- Cards ---- */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card img {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      border-radius: 8px;
+      background: var(--accent);
+    }
+
+    .card .card-code {
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text);
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    /* ---- Form Elements ---- */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    input[type="text"],
+    input[type="search"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--card);
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,107,138,0.12);
+    }
+
+    .file-drop {
+      border: 2px dashed var(--card-border);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--text-muted);
+      font-size: 14px;
+      position: relative;
+    }
+
+    .file-drop:hover,
+    .file-drop.dragover {
+      border-color: var(--primary);
+      background: var(--accent);
+    }
+
+    .file-drop input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .file-drop img {
+      max-height: 180px;
+      border-radius: 8px;
+      margin: 0 auto;
+      display: block;
+    }
+
+    /* ---- Buttons ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.15s;
+    }
+
+    .btn svg { width: 16px; height: 16px; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-fg);
+    }
+
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-danger:hover { background: var(--danger-hover); }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-outline:hover { background: var(--accent); }
+
+    .btn-sm {
+      padding: 7px 14px;
+      font-size: 13px;
+    }
+
+    .btn-block { width: 100%; }
+
+    /* ---- Alerts ---- */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alert-success {
+      background: var(--success-bg);
+      border: 1px solid var(--success-border);
+      color: var(--success-text);
+    }
+
+    .alert-warning {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: var(--warning-text);
+    }
+
+    .alert-error {
+      background: #fde8e8;
+      border: 1px solid #f5a5a5;
+      color: #c0392b;
+    }
+
+    /* ---- Status Badge ---- */
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-badge.pendiente { background: #fff3e0; color: #e65100; }
+    .status-badge.entregado { background: #e8f5e9; color: #2e7d32; }
+    .status-badge.perdido  { background: #fde8e8; color: #c0392b; }
+
+    /* ---- Empty State ---- */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 64px 16px;
+      border: 2px dashed var(--card-border);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .empty-state .icon-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-state .icon-circle svg {
+      width: 24px;
+      height: 24px;
+      color: var(--text-muted);
+    }
+
+    /* ---- Entrega Preview ---- */
+    .entrega-preview {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .entrega-preview img {
+      width: 160px;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      border-radius: 8px;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .entrega-preview .info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .entrega-preview .code-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .entrega-preview .code-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ---- Modal ---- */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+    }
+
+    .modal h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .modal p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    /* ---- Section Spacing ---- */
+    .section-space { display: flex; flex-direction: column; gap: 24px; }
+    .hidden { display: none !important; }
+
+    /* ---- Search Row ---- */
+    .search-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .search-row .form-group { flex: 1; }
+
+    /* ---- Perdidos list ---- */
+    .perdidos-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .perdidos-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: var(--bg);
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .perdidos-list li span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .perdidos-list li svg { color: var(--danger); width: 16px; height: 16px; }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .mobile-header { display: flex; }
+      body { flex-direction: column; }
+      .main { height: auto; min-height: 100dvh; }
+      .content { padding: 20px 16px 48px; }
+      .entrega-preview { flex-direction: column; }
+      .entrega-preview img { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Mobile Header -->
+  <div class="mobile-header">
+    <div class="brand">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Carnets</span>
+    </div>
+    <button class="hamburger" onclick="toggleDrawer()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- Mobile Drawer -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+  <div class="drawer" id="drawer">
+    <div class="sidebar-brand">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Gestion de Carnets</span>
+    </div>
+    <ul class="sidebar-nav" id="drawerNav"></ul>
+  </div>
+
+  <!-- Desktop Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Gestion de Carnets</span>
+    </div>
+    <ul class="sidebar-nav" id="sidebarNav"></ul>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="content" id="mainContent"></div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h3 id="modalTitle">Confirmar</h3>
+      <p id="modalDesc">Descripcion</p>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" id="modalConfirmBtn" onclick="confirmModal()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===================== DATA STORE =====================
+    const carnets = [];
+    let nextId = 1;
+    let activeSection = "registro";
+    let modalCallback = null;
+
+    // ---- SVG Icons ----
+    const ICONS = {
+      registro: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>',
+      pendientes: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+      entrega: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
+      entregados: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      perdidos: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+      search: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+      upload: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+      checkCircle: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      alertCircle: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    };
+
+    const NAV_ITEMS = [
+      { key: "registro", label: "Registrar Carnet", icon: "registro", countState: null },
+      { key: "pendientes", label: "Pendientes", icon: "pendientes", countState: "Pendiente" },
+      { key: "entrega", label: "Entregar Carnet", icon: "entrega", countState: null },
+      { key: "entregados", label: "Entregados", icon: "entregados", countState: "Entregado" },
+      { key: "perdidos", label: "Carnets Perdidos", icon: "perdidos", countState: "Perdido" },
+    ];
+
+    // ===================== HELPERS =====================
+    function getByState(state) {
+      return carnets.filter(c => c.estado === state);
+    }
+
+    function findByCodigo(codigo) {
+      return carnets.find(c => c.codigo.toLowerCase() === codigo.trim().toLowerCase());
+    }
+
+    function codigoExists(codigo) {
+      return carnets.some(c => c.codigo.toLowerCase() === codigo.trim().toLowerCase());
+    }
+
+    // ===================== NAVIGATION =====================
+    function renderNav(containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = NAV_ITEMS.map(item => {
+        const isActive = activeSection === item.key;
+        const count = item.countState ? getByState(item.countState).length : null;
+        return `<li>
+          <button class="${isActive ? 'active' : ''}" onclick="navigateTo('${item.key}')">
+            ${ICONS[item.icon]}
+            <span>${item.label}</span>
+            ${count !== null && count > 0 ? `<span class="badge">${count}</span>` : ''}
+          </button>
+        </li>`;
+      }).join('');
+    }
+
+    function navigateTo(section) {
+      activeSection = section;
+      render();
+      closeDrawer();
+    }
+
+    function toggleDrawer() {
+      document.getElementById('drawer').classList.toggle('open');
+      document.getElementById('drawerOverlay').classList.toggle('open');
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawer').classList.remove('open');
+      document.getElementById('drawerOverlay').classList.remove('open');
+    }
+
+    // ===================== MODAL =====================
+    function openModal(title, desc, btnText, btnClass, callback) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalDesc').textContent = desc;
+      const btn = document.getElementById('modalConfirmBtn');
+      btn.textContent = btnText;
+      btn.className = 'btn ' + btnClass;
+      modalCallback = callback;
+      document.getElementById('modalOverlay').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('open');
+      modalCallback = null;
+    }
+
+    function confirmModal() {
+      if (modalCallback) modalCallback();
+      closeModal();
+      render();
+    }
+
+    // ===================== ALERT HELPER =====================
+    function showAlert(containerId, type, message) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      el.innerHTML = `<div class="alert alert-${type}">${type === 'success' ? ICONS.checkCircle : ICONS.alertCircle} ${message}</div>`;
+      el.classList.remove('hidden');
+      setTimeout(() => { el.classList.add('hidden'); }, 4000);
+    }
+
+    // ===================== SECTION: REGISTRO =====================
+    let regImgData = null;
+
+    function renderRegistro() {
+      return `
+        <div class="section-space">
+          <div>
+            <h2 class="section-title">Registrar Nuevo Carnet</h2>
+            <p class="section-desc">Ingrese el codigo y la imagen del carnet para registrarlo como pendiente.</p>
+          </div>
+          <div id="regAlert" class="hidden"></div>
+          <div class="card" style="max-width:520px;">
+            <div class="form-group">
+              <label for="regCodigo">Codigo del Carnet</label>
+              <input type="text" id="regCodigo" placeholder="Ej: CARNET-001" />
+            </div>
+            <div class="form-group">
+              <label>Imagen del Carnet</label>
+              <div class="file-drop" id="fileDrop">
+                <input type="file" accept="image/*" id="regFile" onchange="handleFileSelect(event)" />
+                <div id="fileDropContent">
+                  ${ICONS.upload}
+                  <p style="margin-top:8px;">Haga clic o arrastre una imagen aqui</p>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="registrarCarnet()">Registrar Carnet</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function setupFileDrop() {
+      const drop = document.getElementById('fileDrop');
+      if (!drop) return;
+      drop.addEventListener('dragover', e => {
+        e.preventDefault();
+        drop.classList.add('dragover');
+      });
+      drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+      drop.addEventListener('drop', e => {
+        e.preventDefault();
+        drop.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type.startsWith('image/')) {
+          readFile(files[0]);
+        }
+      });
+    }
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        readFile(file);
+      }
+    }
+
+    function readFile(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        regImgData = e.target.result;
+        const content = document.getElementById('fileDropContent');
+        if (content) {
+          content.innerHTML = `<img src="${regImgData}" alt="Vista previa" />`;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function registrarCarnet() {
+      const codigoEl = document.getElementById('regCodigo');
+      const codigo = codigoEl.value.trim();
+
+      if (!codigo) {
+        showAlert('regAlert', 'error', 'El codigo del carnet es obligatorio.');
+        return;
+      }
+      if (codigoExists(codigo)) {
+        showAlert('regAlert', 'error', 'Ya existe un carnet con ese codigo.');
+        return;
+      }
+      if (!regImgData) {
+        showAlert('regAlert', 'error', 'La imagen del carnet es obligatoria.');
+        return;
+      }
+
+      carnets.push({
+        id: nextId++,
+        codigo: codigo,
+        imagen: regImgData,
+        estado: "Pendiente",
+        fechaRegistro: new Date().toISOString(),
+      });
+
+      regImgData = null;
+      showAlert('regAlert', 'success', `Carnet "${codigo}" registrado exitosamente.`);
+      codigoEl.value = '';
+      const content = document.getElementById('fileDropContent');
+      if (content) {
+        content.innerHTML = `${ICONS.upload}<p style="margin-top:8px;">Haga clic o arrastre una imagen aqui</p>`;
+      }
+      renderNav('sidebarNav');
+      renderNav('drawerNav');
+    }
+
+    // ===================== SECTION: PENDIENTES =====================
+    function renderPendientes() {
+      const pendientes = getByState("Pendiente");
+      return `
+        <div class="section-space">
+          <div>
+            <h2 class="section-title">Carnets Pendientes</h2>
+            <p class="section-desc">Visualice los carnets que estan pendientes de entrega.</p>
+          </div>
+          <div class="form-group">
+            <input type="search" id="searchPendientes" placeholder="Buscar por codigo..." oninput="filterPendientes()" />
+          </div>
+          <div id="pendientesGrid">
+            ${renderPendientesGrid(pendientes)}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPendientesGrid(list) {
+      if (list.length === 0) {
+        return `<div class="empty-state">
+          <div class="icon-circle">${ICONS.pendientes}</div>
+          <span>No hay carnets pendientes.</span>
+        </div>`;
+      }
+      return `<div class="cards-grid">
+        ${list.map(c => `
+          <div class="card">
+            <img src="${c.imagen}" alt="Carnet ${c.codigo}" />
+            <div class="card-code">${c.codigo}</div>
+            <span class="status-badge pendiente">Pendiente</span>
+            <button class="btn btn-primary btn-sm btn-block" onclick="entregarCarnet('${c.codigo}')">
+              ${ICONS.entrega} Entregar
+            </button>
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
+    function filterPendientes() {
+      const q = document.getElementById('searchPendientes').value.trim().toLowerCase();
+      let list = getByState("Pendiente");
+      if (q) list = list.filter(c => c.codigo.toLowerCase().includes(q));
+      document.getElementById('pendientesGrid').innerHTML = renderPendientesGrid(list);
+    }
+
+    // ===================== SECTION: ENTREGA =====================
+    function renderEntrega() {
+      return `
+        <div class="section-space">
+          <div>
+            <h2 class="section-title">Entregar Carnet</h2>
+            <p class="section-desc">Busque un carnet pendiente por su codigo para entregarlo.</p>
+          </div>
+          <div id="entregaAlert" class="hidden"></div>
+          <div class="search-row">
+            <div class="form-group">
+              <label for="entregaCodigo">Buscar por codigo</label>
+              <input type="text" id="entregaCodigo" placeholder="Ingrese el codigo del carnet..." />
+            </div>
+            <button class="btn btn-primary" onclick="buscarEntrega()" style="margin-bottom:1px;">Buscar</button>
+          </div>
+          <div id="entregaPreview"></div>
+        </div>
+      `;
+    }
+
+    function buscarEntrega() {
+      const codigo = document.getElementById('entregaCodigo').value.trim();
+      const previewEl = document.getElementById('entregaPreview');
+
+      if (!codigo) {
+        showAlert('entregaAlert', 'error', 'Ingrese un codigo para buscar.');
+        previewEl.innerHTML = '';
+        return;
+      }
+
+      const carnet = findByCodigo(codigo);
+      if (!carnet) {
+        showAlert('entregaAlert', 'error', 'No se encontro ningun carnet con ese codigo.');
+        previewEl.innerHTML = '';
+        return;
+      }
+      if (carnet.estado !== "Pendiente") {
+        showAlert('entregaAlert', 'warning', `Este carnet ya tiene estado: ${carnet.estado}.`);
+        previewEl.innerHTML = '';
+        return;
+      }
+
+      document.getElementById('entregaAlert').classList.add('hidden');
+      previewEl.innerHTML = `
+        <div class="entrega-preview">
+          <img src="${carnet.imagen}" alt="Carnet ${carnet.codigo}" />
+          <div class="info">
+            <span class="code-label">Codigo del Carnet</span>
+            <span class="code-value">${carnet.codigo}</span>
+            <span class="status-badge pendiente" style="align-self:flex-start;">Pendiente</span>
+            <button class="btn btn-primary" style="align-self:flex-start; margin-top:8px;" onclick="entregarCarnet('${carnet.codigo}')">
+              ${ICONS.entrega} Entregar Carnet
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function entregarCarnet(codigo) {
+      openModal(
+        'Confirmar Entrega',
+        `Esta seguro de marcar el carnet "${codigo}" como entregado? Esta accion no se puede deshacer.`,
+        'Confirmar Entrega',
+        'btn-primary',
+        () => {
+          const carnet = findByCodigo(codigo);
+          if (carnet && carnet.estado === "Pendiente") {
+            carnet.estado = "Entregado";
+          }
+        }
+      );
+    }
+
+    // ===================== SECTION: ENTREGADOS =====================
+    function renderEntregados() {
+      const entregados = getByState("Entregado");
+      return `
+        <div class="section-space">
+          <div>
+            <h2 class="section-title">Carnets Entregados</h2>
+            <p class="section-desc">Listado de carnets que ya fueron entregados.</p>
+          </div>
+          <div class="form-group">
+            <input type="search" id="searchEntregados" placeholder="Buscar por codigo..." oninput="filterEntregados()" />
+          </div>
+          <div id="entregadosGrid">
+            ${renderEntregadosGrid(entregados)}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEntregadosGrid(list) {
+      if (list.length === 0) {
+        return `<div class="empty-state">
+          <div class="icon-circle">${ICONS.entregados}</div>
+          <span>No hay carnets entregados.</span>
+        </div>`;
+      }
+      return `<div class="cards-grid">
+        ${list.map(c => `
+          <div class="card">
+            <img src="${c.imagen}" alt="Carnet ${c.codigo}" />
+            <div class="card-code">${c.codigo}</div>
+            <span class="status-badge entregado">Entregado</span>
+            <button class="btn btn-danger btn-sm btn-block" onclick="marcarPerdidoDesdeEntregado('${c.codigo}')">
+              ${ICONS.perdidos} Marcar como Perdido
+            </button>
+          </div>
+        `).join('')}
+      </div>`;
+    }
+
+    function filterEntregados() {
+      const q = document.getElementById('searchEntregados').value.trim().toLowerCase();
+      let list = getByState("Entregado");
+      if (q) list = list.filter(c => c.codigo.toLowerCase().includes(q));
+      document.getElementById('entregadosGrid').innerHTML = renderEntregadosGrid(list);
+    }
+
+    // ===================== SECTION: PERDIDOS =====================
+    function renderPerdidos() {
+      const perdidos = getByState("Perdido");
+      return `
+        <div class="section-space">
+          <div>
+            <h2 class="section-title">Carnets Perdidos</h2>
+            <p class="section-desc">Marque un carnet como perdido o consulte la lista de carnets perdidos.</p>
+          </div>
+          <div id="perdidosAlert" class="hidden"></div>
+          <div class="card" style="max-width:520px;">
+            <div class="form-group">
+              <label for="perdidoCodigo">Buscar carnet por codigo</label>
+              <input type="text" id="perdidoCodigo" placeholder="Ingrese el codigo..." />
+            </div>
+            <button class="btn btn-danger" onclick="marcarPerdido()">Marcar como Perdido</button>
+          </div>
+          <div>
+            <h3 style="font-size:16px; font-weight:600; margin-bottom:12px;">Lista de Carnets Perdidos</h3>
+            ${perdidos.length === 0
+              ? `<div class="empty-state">
+                  <div class="icon-circle">${ICONS.perdidos}</div>
+                  <span>No hay carnets marcados como perdidos.</span>
+                </div>`
+              : `<ul class="perdidos-list">
+                  ${perdidos.map(c => `<li>
+                    <span>${ICONS.alertCircle} ${c.codigo}</span>
+                    <button class="btn btn-primary btn-sm" onclick="reentregarCarnet('${c.codigo}')">
+                      ${ICONS.entrega} Reimprimir y Re-entregar
+                    </button>
+                  </li>`).join('')}
+                </ul>`
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    function marcarPerdido() {
+      const codigo = document.getElementById('perdidoCodigo').value.trim();
+
+      if (!codigo) {
+        showAlert('perdidosAlert', 'error', 'Ingrese un codigo para buscar.');
+        return;
+      }
+
+      const carnet = findByCodigo(codigo);
+      if (!carnet) {
+        showAlert('perdidosAlert', 'error', 'No se encontro ningun carnet con ese codigo.');
+        return;
+      }
+      if (carnet.estado === "Perdido") {
+        showAlert('perdidosAlert', 'warning', 'Este carnet ya esta marcado como perdido.');
+        return;
+      }
+
+      const estadoActual = carnet.estado;
+      const mensaje = estadoActual === "Entregado"
+        ? `El carnet "${codigo}" fue entregado. Al marcarlo como perdido, debera reimprimir y volver a entregarlo.`
+        : `Esta seguro de marcar el carnet "${codigo}" como perdido?`;
+
+      openModal(
+        'Marcar como Perdido',
+        mensaje,
+        'Confirmar',
+        'btn-danger',
+        () => {
+          carnet.estado = "Perdido";
+          document.getElementById('perdidoCodigo').value = '';
+        }
+      );
+    }
+
+    function reentregarCarnet(codigo) {
+      const carnet = findByCodigo(codigo);
+      if (!carnet || carnet.estado !== "Perdido") return;
+
+      openModal(
+        'Reimprimir y Re-entregar',
+        `El carnet "${codigo}" sera marcado como pendiente para que pueda ser reimpreso y entregado nuevamente.`,
+        'Confirmar',
+        'btn-primary',
+        () => {
+          carnet.estado = "Pendiente";
+        }
+      );
+    }
+
+    function marcarPerdidoDesdeEntregado(codigo) {
+      const carnet = findByCodigo(codigo);
+      if (!carnet || carnet.estado !== "Entregado") return;
+
+      openModal(
+        'Marcar como Perdido',
+        `El carnet "${codigo}" fue entregado. Al marcarlo como perdido, debera reimprimir y volver a entregarlo.`,
+        'Confirmar',
+        'btn-danger',
+        () => {
+          carnet.estado = "Perdido";
+        }
+      );
+    }
+
+    // ===================== RENDER =====================
+    function render() {
+      renderNav('sidebarNav');
+      renderNav('drawerNav');
+
+      const main = document.getElementById('mainContent');
+      switch (activeSection) {
+        case 'registro':    main.innerHTML = renderRegistro(); setupFileDrop(); break;
+        case 'pendientes':  main.innerHTML = renderPendientes(); break;
+        case 'entrega':     main.innerHTML = renderEntrega(); break;
+        case 'entregados':  main.innerHTML = renderEntregados(); break;
+        case 'perdidos':    main.innerHTML = renderPerdidos(); break;
+      }
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
